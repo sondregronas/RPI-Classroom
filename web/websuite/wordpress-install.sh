@@ -19,6 +19,11 @@ apt-get install php-mysql -y
 apt-get install php -y
 apt-get install mariadb-server -y
 
+# Install WP-Cli
+wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+chmod +x wp-cli.phar
+mv wp-cli.phar /usr/local/bin/wp
+
 cd /var/www/html/
 
 # This part is optional, it's responsible for creating subdirectories for additional websites per machine
@@ -33,7 +38,7 @@ chown -R www-data: .
 
 # This part runs through the secure installer, without setting a root password
 # Disables remote access, does not set a root password. Basically yes to everything that isn't password related.
-printf "\n n\n y\n y\n y\n y\n" | sudo mysql_secure_installation
+printf "\n n\n y\n y\n y\n y\n" | mysql_secure_installation
 
 # Create a database & user with the X variable. Password is set to 'password', this is the default password for Wordpress
 echo "create database $target;" | mysql -uroot
@@ -42,13 +47,23 @@ echo "GRANT ALL ON $target.* TO '$target'@'localhost';" | mysql -uroot
 echo "FLUSH PRIVILEGES;" | mysql -uroot
 
 # Finishing touches
-sudo service apache2 restart
+service apache2 restart
 
 # Configuring wordpress
 cp wp-config-sample.php wp-config.php
 sed -i "s/database_name_here/$target/g" wp-config.php
 sed -i "s/username_here/$target/g" wp-config.php
 sed -i "s/password_here/password/g" wp-config.php
+
+# Default plugins and setup
+# This deletes every theme and plugin
+# Then installs the theme 'Page Builder Framework'
+# And the plugin(s): Elementor, Duplicator, Lazy Load
+wp plugin delete --all --allow-root --path="/var/www/html/$target/"
+wp plugin install elementor --activate --allow-root --path="/var/www/html/$target/"
+wp plugin install duplicator --activate --allow-root --path="/var/www/html/$target/"
+wp theme install page-builder-framework --activate --allow-root --path="/var/www/html/$target/"
+wp theme delete --all --allow-root --path="/var/www/html/$target/"
 
 ###########
 # TODO: Send a URL to the Admin Pi & update the adminpi/index.html
