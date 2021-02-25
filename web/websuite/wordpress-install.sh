@@ -13,6 +13,7 @@ apt-get upgrade -y
 
 # Install necessary requirements
 apt-get install apache2 -y
+apt-get install php-gd -y
 
 # These ones we should already have, keeping them here for now though
 apt-get install php-mysql -y
