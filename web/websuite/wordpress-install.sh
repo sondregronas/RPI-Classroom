@@ -5,7 +5,7 @@ echo "This installer creates a subdirectory for Wordpress"
 read -p "Type your desired html folder name: " input
 
 target=$(echo "$input" | sed 's/\ /_/g')
-host=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+host=$(hostname -I | cut -d' ' -f1)
 
 # Make sure Raspbian is up to date, this part can be optional
 apt-get update -y
@@ -95,4 +95,4 @@ echo "URL: http://$host/$target/wp-admin"
 echo "Username: $target"
 echo "Password: admin"
 echo "Guests can login using guest/guest"
-echo ""- - - - - - - - - - - - - - - - - -"
+echo "- - - - - - - - - - - - - - - - - -"
