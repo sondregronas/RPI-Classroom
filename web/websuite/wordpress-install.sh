@@ -1,11 +1,11 @@
 #!/bin/bash
-echo Welcome to the Wordpress One-click installer
-echo This installer creates a subdirectory for Wordpress
+echo "Welcome to the Wordpress One-click installer"
+echo "This installer creates a subdirectory for Wordpress"
 
 read -p "Type your desired html folder name: " input
 
 target=$(echo "$input" | sed 's/\ /_/g')
-host=$(echo "$(hostname -I)" | sed 's/\ //g')
+host=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
 
 # Make sure Raspbian is up to date, this part can be optional
 apt-get update -y
@@ -26,7 +26,6 @@ chmod +x wp-cli.phar
 mv wp-cli.phar /usr/local/bin/wp
 
 cd /var/www/html/
-
 # This part is optional, it's responsible for creating subdirectories for additional websites per machine
 mkdir $target
 cd $target
@@ -35,7 +34,6 @@ wget http://wordpress.org/latest.tar.gz
 tar xzf latest.tar.gz
 mv wordpress/* .
 rm -rf wordpress latest.tar.gz
-chown -R www-data: .
 
 # This part runs through the secure installer, without setting a root password
 # Disables remote access, does not set a root password. Basically yes to everything that isn't password related.
@@ -47,8 +45,6 @@ echo "CREATE USER '$target'@'localhost' IDENTIFIED BY 'password';" | mysql -uroo
 echo "GRANT ALL ON $target.* TO '$target'@'localhost';" | mysql -uroot
 echo "FLUSH PRIVILEGES;" | mysql -uroot
 
-# Finishing touches
-service apache2 restart
 
 # Configuring wordpress
 cp wp-config-sample.php wp-config.php
@@ -57,20 +53,46 @@ sed -i "s/username_here/$target/g" wp-config.php
 sed -i "s/password_here/password/g" wp-config.php
 
 # Default plugins and setup
+# Sets up Wordpress, using the $target as admin username, password admin
+# Creates a guest user, guest/guest
 # This deletes every theme and plugin
 # Then installs the theme 'Page Builder Framework'
 # And the plugin(s): Elementor, Duplicator, Lazy Load
+# Force Login, Remove Dashboard for non admins
+
+
+wp core install --title="$target" \
+                --url="$host/$target" \
+                --admin_user="$target" \
+                --admin_email="admin@127.0.0.1" \
+                --admin_password="admin" \
+                --path="/var/www/html/$target/" \
+                --allow-root
+
+wp user create guest --user_pass="guest" guest@127.0.0.1 \
+                     --role="subscriber" --allow-root --path="/var/www/html/$target/"
+
 wp plugin delete --all --allow-root --path="/var/www/html/$target/"
 wp plugin install elementor --activate --allow-root --path="/var/www/html/$target/"
 wp plugin install duplicator --activate --allow-root --path="/var/www/html/$target/"
+wp plugin install wp-force-login --activate --allow-root --path="/var/www/html/$target/"
+wp plugin install remove-dashboard-access-for-non-admins --activate --allow-root --path="/var/www/html/$target/"
 wp theme install page-builder-framework --activate --allow-root --path="/var/www/html/$target/"
 wp theme delete --all --allow-root --path="/var/www/html/$target/"
+
+# Finishing touches
+chown -R www-data: /var/www/html/.
+service apache2 restart
 
 ###########
 # TODO: Send a URL to the Admin Pi & update the adminpi/index.html
 ###########
 
 printf "\n\n\n"
-echo - - - - - - - - - - - - - - - - - -
-echo All done, your site is now waiting for you at http://$host/$target
-echo - - - - - - - - - - - - - - - - - -
+echo "- - - - - - - - - - - - - - - - - -"
+echo "We're done! Your website is waiting for you."
+echo "URL: http://$host/$target/wp-admin"
+echo "Username: $target"
+echo "Password: admin"
+echo "Guests can login using guest/guest"
+echo ""- - - - - - - - - - - - - - - - - -"
